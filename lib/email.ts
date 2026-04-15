@@ -7,6 +7,9 @@ const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
 const FROM_EMAIL = process.env.FROM_EMAIL || "hello@example.com";
 
 async function getAccessToken() {
+  const envToken = process.env.GMAIL_ACCESS_TOKEN;
+  if (envToken) return envToken;
+
   const oauth2Client = new google.auth.OAuth2(
     GMAIL_CLIENT_ID,
     GMAIL_CLIENT_SECRET,
