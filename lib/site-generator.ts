@@ -1,3 +1,5 @@
+import { writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
 import { put } from "@vercel/blob";
 
 export type BusinessInfo = {
@@ -9,15 +11,15 @@ export type BusinessInfo = {
   address: string;
 };
 
-const industries: Record<string, { emoji: string; primary: string; secondary: string; accent: string; imageKeyword: string }> = {
-  roofing: { emoji: "🏠", primary: "#ea580c", secondary: "#c2410c", accent: "#fed7aa", imageKeyword: "roof" },
-  plumbing: { emoji: "🔧", primary: "#0284c7", secondary: "#0369a1", accent: "#bae6fd", imageKeyword: "plumber" },
-  landscaping: { emoji: "🌿", primary: "#16a34a", secondary: "#15803d", accent: "#bbf7d0", imageKeyword: "garden" },
-  electrical: { emoji: "⚡", primary: "#ca8a04", secondary: "#a16207", accent: "#fde047", imageKeyword: "electrician" },
-  hvac: { emoji: "❄️", primary: "#dc2626", secondary: "#b91c1c", accent: "#fecaca", imageKeyword: "hvac" },
-  cleaning: { emoji: "✨", primary: "#7c3aed", secondary: "#6d28d9", accent: "#ddd6fe", imageKeyword: "cleaning" },
-  painting: { emoji: "🎨", primary: "#db2777", secondary: "#be185d", accent: "#fbcfe8", imageKeyword: "painting" },
-  default: { emoji: "🏢", primary: "#2563eb", secondary: "#1d4ed8", accent: "#bfdbfe", imageKeyword: "business" },
+const industries: Record<string, { emoji: string; primary: string; gradient: string; imageKeyword: string }> = {
+  roofing: { emoji: "🏠", primary: "#ea580c", gradient: "from-orange-500 to-red-600", imageKeyword: "roof" },
+  plumbing: { emoji: "🔧", primary: "#0284c7", gradient: "from-sky-500 to-blue-600", imageKeyword: "plumber" },
+  landscaping: { emoji: "🌿", primary: "#16a34a", gradient: "from-green-500 to-emerald-600", imageKeyword: "garden" },
+  electrical: { emoji: "⚡", primary: "#ca8a04", gradient: "from-yellow-500 to-amber-600", imageKeyword: "electrician" },
+  hvac: { emoji: "❄️", primary: "#dc2626", gradient: "from-red-500 to-rose-600", imageKeyword: "hvac" },
+  cleaning: { emoji: "✨", primary: "#7c3aed", gradient: "from-violet-500 to-purple-600", imageKeyword: "cleaning" },
+  painting: { emoji: "🎨", primary: "#db2777", gradient: "from-pink-500 to-rose-500", imageKeyword: "painting" },
+  default: { emoji: "🏢", primary: "#2563eb", gradient: "from-blue-500 to-indigo-600", imageKeyword: "business" },
 };
 
 function getIndustryData(industry: string) {
@@ -44,6 +46,7 @@ export async function generateSite(business: BusinessInfo, id: number) {
   const data = getIndustryData(business.industry);
   const services = getServices(business.industry);
   const slug = business.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").slice(0, 30);
+
   const filename = `${slug}-${id}.html`;
 
   const html = `<!DOCTYPE html>
@@ -53,550 +56,245 @@ export async function generateSite(business: BusinessInfo, id: number) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${business.name} | ${business.industry} Services in ${business.location}</title>
   <meta name="description" content="Top-rated ${business.industry} services in ${business.location}. Call ${business.phone} for fast, reliable service.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --primary: ${data.primary};
-      --primary-dark: ${data.secondary};
-      --accent: ${data.accent};
-      --bg: #fafafa;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --text-secondary: #475569;
-      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: ${data.primary}; --primary-dark: color-mix(in srgb, ${data.primary}, black 15%); --primary-light: color-mix(in srgb, ${data.primary}, white 20%); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
-    h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; font-weight: 700; }
-
-    .noise {
-      position: fixed; inset: 0; pointer-events: none; z-index: 9999;
-      opacity: 0.03;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    }
-
-    .scroll-progress {
-      position: fixed; top: 0; left: 0; height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      z-index: 10000; width: 0%; transition: width 0.1s linear;
-    }
-
-    .aurora {
-      position: fixed; inset: 0; z-index: -1; overflow: hidden;
-      background: linear-gradient(180deg, #fafafa 0%, #f1f5f9 100%);
-    }
-    .aurora-blob {
-      position: absolute; border-radius: 50%;
-      filter: blur(80px); opacity: 0.4;
-      animation: float 20s infinite ease-in-out;
-    }
-    .aurora-blob:nth-child(1) {
-      width: 600px; height: 600px; background: var(--accent);
-      top: -200px; right: -100px; animation-delay: 0s;
-    }
-    .aurora-blob:nth-child(2) {
-      width: 500px; height: 500px; background: var(--primary);
-      bottom: -100px; left: -100px; opacity: 0.2; animation-delay: -5s;
-    }
-    .aurora-blob:nth-child(3) {
-      width: 400px; height: 400px; background: var(--accent);
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      opacity: 0.15; animation-delay: -10s;
-    }
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(30px, -30px) scale(1.1); }
-      66% { transform: translate(-20px, 20px) scale(0.95); }
-    }
-
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.6; }
+    img { max-width: 100%; display: block; }
+    a { text-decoration: none; color: inherit; }
     header {
       position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-      background: rgba(255,255,255,0.8); backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
       border-bottom: 1px solid rgba(0,0,0,0.05);
-      transform: translateY(-100%);
-      animation: slideDown 0.8s var(--ease-out-expo) forwards;
     }
-    @keyframes slideDown { to { transform: translateY(0); } }
     .nav-container {
-      max-width: 1200px; margin: 0 auto; padding: 16px 24px;
+      max-width: 1100px; margin: 0 auto; padding: 16px 24px;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .logo {
-      display: flex; align-items: center; gap: 12px;
-      font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.3rem;
-    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.25rem; }
     .logo-icon {
-      width: 44px; height: 44px; border-radius: 12px;
+      width: 40px; height: 40px; border-radius: 10px;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      display: grid; place-items: center; color: #fff; font-size: 1.4rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      transition: transform 0.3s var(--ease-out-expo);
+      display: grid; place-items: center; color: #fff; font-size: 1.25rem;
     }
-    .logo:hover .logo-icon { transform: rotate(12deg) scale(1.1); }
-    .nav-links { display: none; gap: 32px; font-weight: 500; font-size: 0.95rem; }
-    .nav-links a {
-      position: relative; color: var(--text-secondary);
-      transition: color 0.2s ease;
-    }
+    .nav-links { display: none; gap: 28px; font-weight: 500; font-size: 0.95rem; }
     .nav-links a:hover { color: var(--primary); }
-    .nav-links a::after {
-      content: ''; position: absolute; bottom: -4px; left: 0;
-      width: 0; height: 2px; background: var(--primary);
-      transition: width 0.3s var(--ease-out-expo);
-    }
-    .nav-links a:hover::after { width: 100%; }
     .nav-cta {
-      display: none; background: var(--primary); color: #fff;
-      padding: 12px 24px; border-radius: 50px; font-weight: 600;
-      transition: all 0.3s var(--ease-out-expo); position: relative; overflow: hidden;
+      display: none; background: var(--primary); color: #fff; padding: 10px 20px;
+      border-radius: 8px; font-weight: 600; transition: transform .15s ease, box-shadow .15s ease;
     }
-    .nav-cta::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-      transform: translateX(-100%);
-    }
-    .nav-cta:hover::before { animation: shimmer 0.8s ease; }
-    @keyframes shimmer { to { transform: translateX(100%); } }
-    .nav-cta:hover {
-      transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.2);
-      background: var(--primary-dark);
-    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
     .menu-btn {
-      width: 44px; height: 44px; border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 10px; background: var(--surface); cursor: pointer;
-      display: grid; place-items: center; transition: all 0.2s ease;
+      width: 40px; height: 40px; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 8px; background: #fff; cursor: pointer;
+      display: grid; place-items: center;
     }
-    .menu-btn:hover { background: var(--accent); border-color: var(--primary); }
     .mobile-menu {
       display: none; position: absolute; top: 100%; left: 0; right: 0;
-      background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(0,0,0,0.08); padding: 20px 24px;
-      flex-direction: column; gap: 8px;
-      transform: translateY(-10px); opacity: 0;
-      transition: all 0.3s var(--ease-out-expo);
+      background: #fff; border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 16px 24px; flex-direction: column; gap: 12px;
     }
-    .mobile-menu.open {
-      display: flex; transform: translateY(0); opacity: 1;
-    }
-    .mobile-menu a {
-      padding: 12px 0; font-weight: 500; border-bottom: 1px solid rgba(0,0,0,0.05);
-    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 10px 0; font-weight: 500; }
     .mobile-cta {
       background: var(--primary); color: #fff; text-align: center;
-      padding: 14px; border-radius: 10px; font-weight: 600; margin-top: 8px;
+      padding: 12px; border-radius: 8px; font-weight: 600;
     }
     @media (min-width: 768px) {
       .nav-links, .nav-cta { display: flex; }
       .menu-btn { display: none; }
       .mobile-menu { display: none !important; }
     }
-
-    .reveal {
-      opacity: 0; transform: translateY(40px);
-      transition: all 0.8s var(--ease-out-expo);
-    }
-    .reveal.active {
-      opacity: 1; transform: translateY(0);
-    }
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-    .reveal-delay-3 { transition-delay: 0.3s; }
-
     .hero {
-      padding: 160px 24px 100px; position: relative; overflow: hidden;
+      padding: 140px 24px 100px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
     }
     .hero-inner {
-      max-width: 1200px; margin: 0 auto;
-      display: grid; gap: 60px; align-items: center;
+      max-width: 1100px; margin: 0 auto;
+      display: grid; gap: 48px; align-items: center;
     }
     @media (min-width: 900px) {
-      .hero-inner { grid-template-columns: 1.1fr 0.9fr; }
+      .hero-inner { grid-template-columns: 1.05fr 0.95fr; }
     }
     .badge-pill {
       display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.08);
-      padding: 8px 16px; border-radius: 999px; font-size: 0.875rem; font-weight: 500;
-      color: var(--text-secondary); margin-bottom: 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      animation: pulse-glow 3s infinite;
+      background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.06);
+      padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 500;
+      color: #374151; margin-bottom: 18px;
     }
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-      50% { box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 20px var(--accent); }
-    }
-    .badge-pill i { color: #f59e0b; width: 16px; height: 16px; }
-    h1 {
-      font-size: clamp(2.5rem, 5vw, 3.8rem);
-      line-height: 1.05; font-weight: 800; letter-spacing: -0.03em;
-    }
-    .gradient-text {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero p.lead {
-      font-size: 1.25rem; color: var(--text-secondary); margin-top: 20px;
-      line-height: 1.7;
-    }
-    .hero-actions {
-      display: flex; flex-wrap: wrap; gap: 16px; margin-top: 36px;
-      align-items: center;
-    }
+    .badge-pill span { color: #f59e0b; }
+    h1 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; }
+    .hero p.lead { font-size: 1.125rem; color: #4b5563; margin-top: 16px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; align-items: center; }
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 16px 32px; border-radius: 50px; font-weight: 600; font-size: 1.05rem;
-      transition: all 0.3s var(--ease-out-expo); cursor: pointer; border: none;
-      position: relative; overflow: hidden;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 26px; border-radius: 10px; font-weight: 600; font-size: 1rem;
+      transition: all .15s ease; cursor: pointer; border: none;
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: #fff; box-shadow: 0 12px 36px rgba(0,0,0,0.15);
+      color: #fff; box-shadow: 0 10px 28px rgba(0,0,0,0.12);
     }
-    .btn-primary:hover {
-      transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 20px 48px rgba(0,0,0,0.25);
-    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(0,0,0,0.18); }
     .btn-secondary {
-      background: var(--surface); color: var(--text);
-      border: 1.5px solid rgba(0,0,0,0.1);
+      background: #fff; color: #1f2937; border: 1px solid rgba(0,0,0,0.1);
     }
-    .btn-secondary:hover {
-      border-color: var(--primary); background: rgba(255,255,255,1);
-      transform: translateY(-2px);
-    }
-    .btn i { width: 20px; height: 20px; }
-
+    .btn-secondary:hover { border-color: rgba(0,0,0,0.18); background: #fafafa; }
     .hero-visual {
-      position: relative; border-radius: 24px; overflow: hidden;
+      position: relative; border-radius: 18px; overflow: hidden;
       background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-      min-height: 420px; display: grid; place-items: center;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.12);
-      transform-style: preserve-3d; perspective: 1000px;
+      min-height: 320px; display: grid; place-items: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.08);
     }
     .hero-visual::before {
       content: ""; position: absolute; inset: 0;
       background: url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80') center/cover;
-      opacity: 0.4; transition: transform 0.8s var(--ease-out-expo);
+      opacity: 0.35;
     }
-    .hero-visual:hover::before { transform: scale(1.08); }
     .hero-card {
       position: relative; z-index: 2;
-      background: rgba(255,255,255,0.98); padding: 28px 32px;
-      border-radius: 20px; box-shadow: 0 24px 64px rgba(0,0,0,0.15);
-      max-width: 300px; text-align: center;
-      animation: float-card 6s ease-in-out infinite;
-      border: 1px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.96); padding: 22px 26px;
+      border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+      max-width: 280px; text-align: center;
     }
-    @keyframes float-card {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      50% { transform: translateY(-12px) rotate(1deg); }
-    }
-    .hero-card h4 { font-size: 1.15rem; font-weight: 700; }
-    .hero-card p { font-size: 0.9rem; color: var(--text-secondary); margin-top: 6px; }
-    .stars { color: #f59e0b; font-size: 1.2rem; margin-top: 10px; display: flex; justify-content: center; gap: 2px; }
-
+    .hero-card h4 { font-size: 1.1rem; font-weight: 700; }
+    .hero-card p { font-size: 0.9rem; color: #6b7280; margin-top: 4px; }
+    .stars { color: #f59e0b; font-size: 1.1rem; margin-top: 8px; }
     .trust {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: #fff; padding: 40px 24px; position: relative; overflow: hidden;
-    }
-    .trust::before {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 0%, transparent 50%);
+      background: #0b1220; color: #fff; padding: 28px 24px;
     }
     .trust-inner {
-      max-width: 1200px; margin: 0 auto;
-      display: grid; gap: 24px; grid-template-columns: repeat(2, 1fr);
-      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto;
+      display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr);
     }
     @media (min-width: 700px) {
       .trust-inner { grid-template-columns: repeat(4, 1fr); }
     }
     .trust-item { text-align: center; }
-    .trust-item h3 {
-      font-size: 2.2rem; font-weight: 800;
-      background: linear-gradient(135deg, #fff, var(--accent));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .trust-item p { font-size: 0.875rem; opacity: 0.7; margin-top: 4px; }
-
-    .section { padding: 120px 24px; }
-    .section-alt { background: rgba(255,255,255,0.5); }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .section h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800; text-align: center; }
-    .section-sub { text-align: center; color: var(--text-secondary); margin-top: 12px; max-width: 640px; margin-inline: auto; font-size: 1.1rem; }
-
+    .trust-item h3 { font-size: 1.6rem; font-weight: 800; }
+    .trust-item p { font-size: 0.85rem; opacity: 0.8; }
+    .section { padding: 90px 24px; }
+    .section-alt { background: #f8fafc; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 800; text-align: center; }
+    .section-sub { text-align: center; color: #4b5563; margin-top: 10px; max-width: 680px; margin-inline: auto; }
     .services-grid {
-      display: grid; gap: 24px; margin-top: 60px;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      display: grid; gap: 20px; margin-top: 44px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
     .service-card {
-      background: var(--surface); border: 1px solid rgba(0,0,0,0.06); border-radius: 20px;
-      padding: 32px; transition: all 0.4s var(--ease-out-expo);
-      transform-style: preserve-3d; cursor: pointer;
-      position: relative; overflow: hidden;
+      background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px;
+      padding: 26px; transition: transform .2s ease, box-shadow .2s ease;
     }
-    .service-card::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(135deg, var(--accent) 0%, transparent 60%);
-      opacity: 0; transition: opacity 0.4s ease;
-    }
-    .service-card:hover {
-      transform: translateY(-8px) rotateX(2deg);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.12);
-      border-color: var(--accent);
-    }
-    .service-card:hover::before { opacity: 0.5; }
+    .service-card:hover { transform: translateY(-4px); box-shadow: 0 18px 48px rgba(0,0,0,0.08); }
     .service-icon {
-      width: 56px; height: 56px; border-radius: 16px;
+      width: 48px; height: 48px; border-radius: 12px;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      display: grid; place-items: center; color: #fff; font-size: 1.6rem;
-      margin-bottom: 20px; position: relative; z-index: 1;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
-      transition: transform 0.4s var(--ease-out-expo);
+      display: grid; place-items: center; color: #fff; font-size: 1.4rem; margin-bottom: 14px;
     }
-    .service-card:hover .service-icon { transform: scale(1.1) rotate(-5deg); }
-    .service-card h3 { font-size: 1.15rem; font-weight: 700; position: relative; z-index: 1; }
-    .service-card p { font-size: 0.95rem; color: var(--text-secondary); margin-top: 8px; position: relative; z-index: 1; }
-
+    .service-card h3 { font-size: 1.05rem; font-weight: 700; }
+    .service-card p { font-size: 0.9rem; color: #6b7280; margin-top: 6px; }
     .why-grid {
-      display: grid; gap: 24px; margin-top: 60px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      display: grid; gap: 28px; margin-top: 44px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     }
     .why-box {
-      background: var(--surface); border-radius: 20px; padding: 32px;
+      background: #fff; border-radius: 16px; padding: 28px;
       border: 1px solid rgba(0,0,0,0.06);
-      transition: all 0.4s var(--ease-out-expo); position: relative; overflow: hidden;
     }
-    .why-box::after {
-      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      transform: scaleX(0); transform-origin: left;
-      transition: transform 0.4s var(--ease-out-expo);
+    .why-box h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+    .why-box p { font-size: 0.95rem; color: #4b5563; }
+    .reviews-grid {
+      display: grid; gap: 20px; margin-top: 44px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
-    .why-box:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 16px 48px rgba(0,0,0,0.08);
-    }
-    .why-box:hover::after { transform: scaleX(1); }
-    .why-box h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
-    .why-box p { font-size: 0.95rem; color: var(--text-secondary); }
-
-    .reviews-wrapper { margin-top: 60px; position: relative; }
-    .reviews-track {
-      display: flex; gap: 20px;
-      overflow-x: auto; scroll-snap-type: x mandatory;
-      padding-bottom: 20px; scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    .reviews-track::-webkit-scrollbar { display: none; }
     .review {
-      flex: 0 0 340px; scroll-snap-align: start;
-      background: var(--surface); border-radius: 20px; padding: 28px;
-      border: 1px solid rgba(0,0,0,0.06);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
-      transition: all 0.3s var(--ease-out-expo);
+      background: #fff; border-radius: 16px; padding: 24px;
+      border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 4px 20px rgba(0,0,0,0.04);
     }
-    .review:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
-    .review-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
     .review-avatar {
-      width: 50px; height: 50px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 1.1rem;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+      display: grid; place-items: center; font-weight: 700; color: #475569;
     }
     .review-name { font-weight: 700; }
-    .review-meta { font-size: 0.85rem; color: var(--text-secondary); }
-    .review-stars { color: #f59e0b; display: flex; gap: 2px; margin-bottom: 12px; }
-    .review-stars i { width: 16px; height: 16px; fill: currentColor; }
-    .review p { font-size: 0.95rem; color: var(--text); line-height: 1.7; }
-    .reviews-nav {
-      display: flex; justify-content: center; gap: 12px; margin-top: 24px;
-    }
-    .reviews-nav button {
-      width: 48px; height: 48px; border-radius: 50%;
-      border: 1px solid rgba(0,0,0,0.1); background: var(--surface); cursor: pointer;
-      display: grid; place-items: center; transition: all 0.2s ease;
-    }
-    .reviews-nav button:hover {
-      background: var(--primary); border-color: var(--primary); color: #fff;
-      transform: scale(1.1);
-    }
-    .reviews-nav button i { width: 20px; height: 20px; }
-
+    .review-meta { font-size: 0.8rem; color: #6b7280; }
+    .review p { font-size: 0.95rem; color: #374151; }
     .cta-section {
-      padding: 120px 24px; position: relative; overflow: hidden;
+      padding: 90px 24px;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: #fff; text-align: center;
     }
-    .cta-section::before {
-      content: ''; position: absolute; inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .cta-section h2 {
-      font-size: clamp(2rem, 4vw, 3rem); font-weight: 800;
-      position: relative; z-index: 1;
-    }
-    .cta-section p { opacity: 0.95; margin-top: 12px; font-size: 1.15rem; position: relative; z-index: 1; }
+    .cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 2.4rem); font-weight: 800; }
+    .cta-section p { opacity: 0.95; margin-top: 10px; font-size: 1.1rem; }
     .cta-phone {
-      display: inline-block; margin-top: 28px;
+      display: inline-block; margin-top: 22px;
       background: #fff; color: var(--primary-dark);
-      padding: 18px 36px; border-radius: 50px; font-weight: 800; font-size: 1.35rem;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.25);
-      transition: all 0.3s var(--ease-out-expo); position: relative; z-index: 1;
-      animation: pulse-cta 2s infinite;
+      padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 1.25rem;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.2); transition: transform .15s ease;
     }
-    @keyframes pulse-cta {
-      0%, 100% { box-shadow: 0 16px 48px rgba(0,0,0,0.25); }
-      50% { box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 20px rgba(255,255,255,0); }
-    }
-    .cta-phone:hover {
-      transform: translateY(-3px) scale(1.05);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-      animation: none;
-    }
-
+    .cta-phone:hover { transform: translateY(-2px); }
     .modal-overlay {
       position: fixed; inset: 0; z-index: 2000;
-      background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
       display: none; align-items: center; justify-content: center; padding: 24px;
-      opacity: 0; transition: opacity 0.3s ease;
     }
-    .modal-overlay.open { display: flex; opacity: 1; }
+    .modal-overlay.open { display: flex; }
     .modal {
-      background: var(--surface); border-radius: 24px; max-width: 460px; width: 100%;
-      padding: 32px; box-shadow: 0 40px 100px rgba(0,0,0,0.3);
-      transform: scale(0.9) translateY(20px); opacity: 0;
-      transition: all 0.4s var(--ease-out-expo); position: relative;
-      border: 1px solid rgba(0,0,0,0.06);
+      background: #fff; border-radius: 18px; max-width: 420px; width: 100%;
+      padding: 28px; box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+      transform: scale(0.96); opacity: 0; transition: all .2s ease;
     }
-    .modal-overlay.open .modal { transform: scale(1) translateY(0); opacity: 1; }
-    .modal h3 { font-size: 1.4rem; font-weight: 700; }
-    .modal p { color: var(--text-secondary); font-size: 0.95rem; margin-top: 6px; }
+    .modal-overlay.open .modal { transform: scale(1); opacity: 1; }
+    .modal h3 { font-size: 1.25rem; font-weight: 700; }
+    .modal p { color: #4b5563; font-size: 0.95rem; margin-top: 6px; }
     .modal-close {
-      position: absolute; top: 16px; right: 16px;
-      width: 40px; height: 40px; border-radius: 50%;
-      border: 1px solid rgba(0,0,0,0.08); background: var(--surface); cursor: pointer;
-      display: grid; place-items: center; transition: all 0.2s ease;
+      position: absolute; top: 14px; right: 14px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.08); background: #fff; cursor: pointer;
+      display: grid; place-items: center;
     }
-    .modal-close:hover { background: var(--accent); border-color: var(--primary); }
-    .form-group { margin-top: 18px; position: relative; }
-    .form-group label {
-      display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px;
-      color: var(--text-secondary);
-    }
+    .form-group { margin-top: 16px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
     .form-group input, .form-group textarea {
-      width: 100%; padding: 14px 16px; border-radius: 12px;
-      border: 1.5px solid rgba(0,0,0,0.1); font-size: 1rem; font-family: inherit;
-      background: var(--bg); transition: all 0.2s ease;
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.12); font-size: 0.95rem; font-family: inherit;
     }
     .form-group input:focus, .form-group textarea:focus {
       outline: none; border-color: var(--primary);
-      box-shadow: 0 0 0 4px var(--accent);
-      background: var(--surface);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
     }
     .submit-btn {
-      width: 100%; margin-top: 20px;
+      width: 100%; margin-top: 18px;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: #fff; border: none; padding: 16px; border-radius: 12px;
-      font-weight: 700; font-size: 1.05rem; cursor: pointer;
-      transition: all 0.3s var(--ease-out-expo);
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      color: #fff; border: none; padding: 14px; border-radius: 10px;
+      font-weight: 700; font-size: 1rem; cursor: pointer;
     }
-    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-    .submit-btn .spinner {
-      width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff; border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
+    .submit-btn:hover { opacity: 0.95; }
     footer {
-      background: #0f172a; color: #94a3b8; padding: 60px 24px 40px; text-align: center;
+      background: #0f172a; color: #cbd5e1; padding: 40px 24px; text-align: center;
     }
-    footer .footer-logo {
-      display: inline-flex; align-items: center; gap: 12px;
-      color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.4rem;
-      margin-bottom: 20px;
-    }
-    footer p { font-size: 0.95rem; }
-    .footer-links { display: flex; justify-content: center; gap: 28px; margin-top: 16px; font-size: 0.9rem; }
-    .footer-links a { color: #94a3b8; transition: color 0.2s ease; }
+    footer p { font-size: 0.9rem; }
+    .footer-links { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.85rem; }
     .footer-links a:hover { color: #fff; }
-
     .float-cta {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: var(--surface); border: 1px solid rgba(0,0,0,0.08); border-radius: 50px;
-      padding: 12px 20px; display: flex; align-items: center; gap: 14px;
-      box-shadow: 0 12px 48px rgba(0,0,0,0.18); z-index: 900;
-      animation: slideUpFloat 0.8s var(--ease-out-expo) forwards;
-    }
-    @keyframes slideUpFloat {
-      from { transform: translateX(-50%) translateY(100px); opacity: 0; }
-      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 50px;
+      padding: 10px 18px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 900;
     }
     .float-cta a {
-      background: var(--primary); color: #fff; padding: 12px 20px;
+      background: var(--primary); color: #fff; padding: 10px 18px;
       border-radius: 50px; font-weight: 700; font-size: 0.95rem;
-      transition: all 0.2s ease;
     }
-    .float-cta a:hover { background: var(--primary-dark); }
-    .float-cta span { font-weight: 600; font-size: 0.95rem; color: var(--text); }
+    .float-cta span { font-weight: 600; font-size: 0.95rem; color: #1f2937; }
     @media (min-width: 768px) { .float-cta { display: none; } }
-
-    .back-to-top {
-      position: fixed; bottom: 100px; right: 24px;
-      width: 50px; height: 50px; border-radius: 50%;
-      background: var(--surface); border: 1px solid rgba(0,0,0,0.1);
-      display: grid; place-items: center; cursor: pointer;
-      opacity: 0; transform: translateY(20px); pointer-events: none;
-      transition: all 0.3s var(--ease-out-expo); z-index: 800;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-    }
-    .back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .back-to-top:hover { background: var(--primary); border-color: var(--primary); color: #fff; transform: translateY(-4px); }
-    .back-to-top i { width: 20px; height: 20px; }
-
-    #particles { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
-
-    .chat-bubble {
-      position: fixed; bottom: 100px; right: 24px;
-      width: 56px; height: 56px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: #fff; display: grid; place-items: center;
-      cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-      transition: all 0.3s var(--ease-out-expo); z-index: 850;
-      animation: pulse-chat 3s infinite;
-    }
-    @keyframes pulse-chat {
-      0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
-      50% { box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 10px rgba(0,0,0,0); }
-    }
-    .chat-bubble:hover { transform: scale(1.1); animation: none; }
-    .chat-bubble i { width: 24px; height: 24px; }
-    @media (max-width: 767px) { .chat-bubble { bottom: 100px; right: 20px; } }
   </style>
 </head>
 <body>
-  <div class="scroll-progress" id="scrollProgress"></div>
-  <div class="noise"></div>
-  <div class="aurora">
-    <div class="aurora-blob"></div>
-    <div class="aurora-blob"></div>
-    <div class="aurora-blob"></div>
-  </div>
-  <canvas id="particles"></canvas>
-
   <header>
     <div class="nav-container">
       <a href="#" class="logo">
@@ -611,7 +309,11 @@ export async function generateSite(business: BusinessInfo, id: number) {
       </nav>
       <a class="nav-cta" href="tel:${business.phone.replace(/\D/g, "")}">Call Now</a>
       <button class="menu-btn" aria-label="Menu" onclick="toggleMenu()">
-        <i data-lucide="menu" style="width:20px;height:20px;"></i>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
       </button>
     </div>
     <div class="mobile-menu" id="mobileMenu">
@@ -626,23 +328,22 @@ export async function generateSite(business: BusinessInfo, id: number) {
 
   <section class="hero">
     <div class="hero-inner">
-      <div class="reveal">
+      <div>
         <div class="badge-pill">
-          <i data-lucide="star"></i>
-          <span>Top-rated ${business.industry} in ${business.location}</span>
+          <span>★</span> Top-rated ${business.industry} in ${business.location}
         </div>
-        <h1>Your Local <span class="gradient-text">${business.industry}</span> Experts in ${business.location}</h1>
+        <h1>Your Local ${business.industry} Experts in ${business.location}</h1>
         <p class="lead">
           Reliable, fast, and fairly priced. We help homeowners and businesses in ${business.location} get the job done right—the first time.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="tel:${business.phone.replace(/\D/g, "")}">
-            <i data-lucide="phone"></i> Get a Free Quote
+            📞 Get a Free Quote
           </a>
-          ${business.email ? `<a class="btn btn-secondary" href="mailto:${business.email}"><i data-lucide="mail"></i> Email Us</a>` : `<button class="btn btn-secondary" onclick="openModal()"><i data-lucide="message-circle"></i> Send a Message</button>`}
+          ${business.email ? `<a class="btn btn-secondary" href="mailto:${business.email}">✉️ Email Us</a>` : `<button class="btn btn-secondary" onclick="openModal()">✉️ Send a Message</button>`}
         </div>
       </div>
-      <div class="hero-visual reveal reveal-delay-1">
+      <div class="hero-visual">
         <div class="hero-card">
           <h4>"Highly recommend!"</h4>
           <p>Local customer from ${business.location}</p>
@@ -654,23 +355,23 @@ export async function generateSite(business: BusinessInfo, id: number) {
 
   <section class="trust">
     <div class="trust-inner">
-      <div class="trust-item reveal"><h3 class="counter" data-target="10">0</h3><p>Years Experience</p></div>
-      <div class="trust-item reveal reveal-delay-1"><h3 class="counter" data-target="500">0</h3><p>Happy Customers</p></div>
-      <div class="trust-item reveal reveal-delay-2"><h3>24/7</h3><p>Emergency Service</p></div>
-      <div class="trust-item reveal reveal-delay-3"><h3>100%</h3><p>Satisfaction Guaranteed</p></div>
+      <div class="trust-item"><h3>10+</h3><p>Years Experience</p></div>
+      <div class="trust-item"><h3>500+</h3><p>Happy Customers</p></div>
+      <div class="trust-item"><h3>24/7</h3><p>Emergency Service</p></div>
+      <div class="trust-item"><h3>100%</h3><p>Satisfaction Guaranteed</p></div>
     </div>
   </section>
 
   <section class="section" id="services">
     <div class="container">
-      <h2 class="reveal">Services We Offer</h2>
-      <p class="section-sub reveal reveal-delay-1">From routine maintenance to major projects, we've got ${business.location} covered.</p>
+      <h2>Services We Offer</h2>
+      <p class="section-sub">From routine maintenance to major projects, we've got ${business.location} covered.</p>
       <div class="services-grid">
         ${services.map((s, i) => `
-        <div class="service-card reveal reveal-delay-${(i % 3) + 1}">
+        <div class="service-card">
           <div class="service-icon">${data.emoji}</div>
           <h3>${s}</h3>
-          <p>Professional ${s.toLowerCase()} delivered by experienced local experts in ${business.location}.</p>
+          <p>Professional ${s.toLowerCase()} delivered by experienced local experts.</p>
         </div>
         `).join("")}
       </div>
@@ -679,24 +380,24 @@ export async function generateSite(business: BusinessInfo, id: number) {
 
   <section class="section section-alt" id="why">
     <div class="container">
-      <h2 class="reveal">Why ${business.name}?</h2>
-      <p class="section-sub reveal reveal-delay-1">We're not just another ${business.industry} company—we're your neighbors.</p>
+      <h2>Why ${business.name}?</h2>
+      <p class="section-sub">We're not just another ${business.industry} company—we're your neighbors.</p>
       <div class="why-grid">
-        <div class="why-box reveal reveal-delay-1">
-          <h4><i data-lucide="zap" style="width:20px;height:20px;color:var(--primary);"></i> Fast Response Times</h4>
-          <p>We know delays cost money. That's why we prioritize urgent requests and arrive on time.</p>
+        <div class="why-box">
+          <h4>⚡ Fast Response Times</h4>
+          <p>We know delays cost money. That’s why we prioritize urgent requests and arrive on time.</p>
         </div>
-        <div class="why-box reveal reveal-delay-2">
-          <h4><i data-lucide="dollar-sign" style="width:20px;height:20px;color:var(--primary);"></i> Upfront Pricing</h4>
+        <div class="why-box">
+          <h4>💰 Upfront Pricing</h4>
           <p>No hidden fees, no surprises. You get a clear quote before any work begins.</p>
         </div>
-        <div class="why-box reveal reveal-delay-1">
-          <h4><i data-lucide="shield-check" style="width:20px;height:20px;color:var(--primary);"></i> Licensed & Insured</h4>
+        <div class="why-box">
+          <h4>🛡️ Licensed & Insured</h4>
           <p>Peace of mind matters. Our team is fully licensed and insured for every job we take.</p>
         </div>
-        <div class="why-box reveal reveal-delay-2">
-          <h4><i data-lucide="award" style="width:20px;height:20px;color:var(--primary);"></i> Quality Guaranteed</h4>
-          <p>We stand behind our work. If something isn't right, we'll make it right—period.</p>
+        <div class="why-box">
+          <h4>🏆 Quality Guaranteed</h4>
+          <p>We stand behind our work. If something isn’t right, we’ll make it right—period.</p>
         </div>
       </div>
     </div>
@@ -704,66 +405,41 @@ export async function generateSite(business: BusinessInfo, id: number) {
 
   <section class="section" id="reviews">
     <div class="container">
-      <h2 class="reveal">What ${business.location} Customers Say</h2>
-      <p class="section-sub reveal reveal-delay-1">Real reviews from real people in your community.</p>
-      <div class="reviews-wrapper reveal reveal-delay-2">
-        <div class="reviews-track" id="reviewsTrack">
-          <div class="review">
-            <div class="review-header">
-              <div class="review-avatar">JD</div>
-              <div>
-                <div class="review-name">James D.</div>
-                <div class="review-meta">${business.location}</div>
-              </div>
+      <h2>What ${business.location} Customers Say</h2>
+      <p class="section-sub">Real reviews from real people in your community.</p>
+      <div class="reviews-grid">
+        <div class="review">
+          <div class="review-header">
+            <div class="review-avatar">JD</div>
+            <div>
+              <div class="review-name">James D.</div>
+              <div class="review-meta">${business.location}</div>
             </div>
-            <div class="review-stars">
-              <i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i>
-            </div>
-            <p>"${business.name} was incredibly professional. They showed up on time, explained everything, and the price was fair. Will definitely call again."</p>
           </div>
-          <div class="review">
-            <div class="review-header">
-              <div class="review-avatar">SM</div>
-              <div>
-                <div class="review-name">Sarah M.</div>
-                <div class="review-meta">${business.location}</div>
-              </div>
-            </div>
-            <div class="review-stars">
-              <i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i>
-            </div>
-            <p>"I had an emergency and they came out within the hour. The team was courteous, clean, and fixed the issue fast. Highly recommended!"</p>
-          </div>
-          <div class="review">
-            <div class="review-header">
-              <div class="review-avatar">RK</div>
-              <div>
-                <div class="review-name">Robert K.</div>
-                <div class="review-meta">${business.location}</div>
-              </div>
-            </div>
-            <div class="review-stars">
-              <i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i>
-            </div>
-            <p>"Best ${business.industry} service I've used in ${business.location}. Honest pricing, great communication, and quality work. Five stars!"</p>
-          </div>
-          <div class="review">
-            <div class="review-header">
-              <div class="review-avatar">AL</div>
-              <div>
-                <div class="review-name">Amanda L.</div>
-                <div class="review-meta">${business.location}</div>
-              </div>
-            </div>
-            <div class="review-stars">
-              <i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i>
-            </div>
-            <p>"From the first phone call to the finished job, everything was seamless. I already recommended them to two friends!"</p>
-          </div>
+          <div class="stars">★★★★★</div>
+          <p>"${business.name} was incredibly professional. They showed up on time, explained everything, and the price was fair. Will definitely call again."</p>
         </div>
-        <div class="reviews-nav">
-          <button onclick="scrollReviews(-1)" aria-label="Previous review"><i data-lucide="chevron-left"></i></button>
-          <button onclick="scrollReviews(1)" aria-label="Next review"><i data-lucide="chevron-right"></i></button>
+        <div class="review">
+          <div class="review-header">
+            <div class="review-avatar">SM</div>
+            <div>
+              <div class="review-name">Sarah M.</div>
+              <div class="review-meta">${business.location}</div>
+            </div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p>"I had an emergency and they came out within the hour. The team was courteous, clean, and fixed the issue fast. Highly recommended!"</p>
+        </div>
+        <div class="review">
+          <div class="review-header">
+            <div class="review-avatar">RK</div>
+            <div>
+              <div class="review-name">Robert K.</div>
+              <div class="review-meta">${business.location}</div>
+            </div>
+          </div>
+          <div class="stars">★★★★★</div>
+          <p>"Best ${business.industry} service I’ve used in ${business.location}. Honest pricing, great communication, and quality work. Five stars!"</p>
         </div>
       </div>
     </div>
@@ -771,21 +447,17 @@ export async function generateSite(business: BusinessInfo, id: number) {
 
   <section class="cta-section" id="contact">
     <div class="container">
-      <h2 class="reveal">Ready to get started?</h2>
-      <p class="reveal reveal-delay-1">Call now for a free, no-obligation quote. We're available 24/7.</p>
-      <a class="cta-phone reveal reveal-delay-2" href="tel:${business.phone.replace(/\D/g, "")}">${business.phone}</a>
-      ${business.email ? `<p class="reveal reveal-delay-2" style="margin-top: 16px; font-size: 1.1rem; opacity: 0.95;"><a href="mailto:${business.email}" style="color:#fff;text-decoration:underline;">${business.email}</a></p>` : ""}
-      <p class="reveal reveal-delay-3" style="margin-top: 20px; font-size: 0.95rem; opacity: 0.85;">${business.address}</p>
+      <h2>Ready to get started?</h2>
+      <p>Call now for a free, no-obligation quote. We’re available 24/7.</p>
+      <a class="cta-phone" href="tel:${business.phone.replace(/\D/g, "")}">${business.phone}</a>
+      ${business.email ? `<p style="margin-top: 12px; font-size: 1rem; opacity: 0.95;"><a href="mailto:${business.email}" style="color:#fff;text-decoration:underline;">${business.email}</a></p>` : ""}
+      <p style="margin-top: 18px; font-size: 0.9rem; opacity: 0.85;">${business.address}</p>
     </div>
   </section>
 
   <footer>
-    <div class="footer-logo">
-      <div class="logo-icon">${data.emoji}</div>
-      ${business.name}
-    </div>
     <p>&copy; ${new Date().getFullYear()} ${business.name}. All rights reserved.</p>
-    <p style="margin-top: 10px; font-size: 0.95rem;">
+    <p style="margin-top: 8px; font-size: 0.9rem; opacity: 0.9;">
       ${business.phone} ${business.email ? `· <a href="mailto:${business.email}" style="color:#fff;text-decoration:underline;">${business.email}</a>` : ""}
     </p>
     <div class="footer-links">
@@ -801,52 +473,37 @@ export async function generateSite(business: BusinessInfo, id: number) {
     <a href="tel:${business.phone.replace(/\D/g, "")}">Call Now</a>
   </div>
 
-  <div class="chat-bubble" onclick="openModal()" aria-label="Open chat">
-    <i data-lucide="message-circle"></i>
-  </div>
-
-  <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
-    <i data-lucide="arrow-up"></i>
-  </button>
-
   <div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
     <div class="modal" style="position: relative;">
-      <button class="modal-close" onclick="closeModal()" aria-label="Close">
-        <i data-lucide="x" style="width:18px;height:18px;"></i>
-      </button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
       <h3>Send us a message</h3>
-      <p>Tell us what you need and we'll get back to you within 24 hours.</p>
-      <form id="contactForm" onsubmit="handleFormSubmit(event)">
+      <p>Tell us what you need and we’ll get back to you within 24 hours.</p>
+      <form onsubmit="event.preventDefault(); alert('Thanks! In a real site, this would send your message to ' + '${business.name}'); closeModal();">
         <div class="form-group">
           <label>Full Name</label>
-          <input type="text" name="name" placeholder="Your name" required />
+          <input type="text" placeholder="Your name" required />
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" name="email" placeholder="you@example.com" required />
+          <input type="email" placeholder="you@example.com" required />
         </div>
         <div class="form-group">
           <label>Phone</label>
-          <input type="tel" name="phone" placeholder="(555) 123-4567" required />
+          <input type="tel" placeholder="(555) 123-4567" required />
         </div>
         <div class="form-group">
           <label>Message</label>
-          <textarea name="message" rows="3" placeholder="How can we help?"></textarea>
+          <textarea rows="3" placeholder="How can we help?"></textarea>
         </div>
-        <button type="submit" class="submit-btn" id="submitBtn">
-          <span>Send Message</span>
-        </button>
+        <button type="submit" class="submit-btn">Send Message</button>
       </form>
     </div>
   </div>
 
   <script>
-    lucide.createIcons();
-
     function toggleMenu() {
       document.getElementById('mobileMenu').classList.toggle('open');
     }
-
     function openModal() {
       document.getElementById('modal').classList.add('open');
       document.body.style.overflow = 'hidden';
@@ -858,171 +515,23 @@ export async function generateSite(business: BusinessInfo, id: number) {
     function closeModalOutside(e) {
       if (e.target.id === 'modal') closeModal();
     }
-
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById('submitBtn');
-      const originalContent = btn.innerHTML;
-      btn.innerHTML = '<div class="spinner"></div><span>Sending...</span>';
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.innerHTML = '<i data-lucide="check"></i><span>Message Sent!</span>';
-        lucide.createIcons();
-        setTimeout(() => {
-          closeModal();
-          btn.innerHTML = originalContent;
-          btn.disabled = false;
-          e.target.reset();
-        }, 1200);
-      }, 1500);
-    }
-
-    function scrollReviews(direction) {
-      const track = document.getElementById('reviewsTrack');
-      const scrollAmount = 360;
-      track.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
-    }
-
-    window.addEventListener('scroll', () => {
-      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (scrollTop / scrollHeight) * 100;
-      document.getElementById('scrollProgress').style.width = scrolled + '%';
-
-      const backToTop = document.getElementById('backToTop');
-      if (scrollTop > 500) backToTop.classList.add('visible');
-      else backToTop.classList.remove('visible');
-    });
-
-    const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-          const counters = entry.target.querySelectorAll('.counter');
-          counters.forEach(counter => animateCounter(counter));
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-    function animateCounter(counter) {
-      if (counter.dataset.animated) return;
-      counter.dataset.animated = 'true';
-      const target = parseInt(counter.dataset.target);
-      const duration = 2000;
-      const step = target / (duration / 16);
-      let current = 0;
-      const update = () => {
-        current += step;
-        if (current < target) {
-          counter.textContent = Math.floor(current) + '+';
-          requestAnimationFrame(update);
-        } else {
-          counter.textContent = target + '+';
-        }
-      };
-      requestAnimationFrame(update);
-    }
-
-    const canvas = document.getElementById('particles');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-    let mouseX = 0, mouseY = 0;
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    window.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
-
-    class Particle {
-      constructor() {
-        this.reset();
-      }
-      reset() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 2 + 0.5;
-        this.speedX = (Math.random() - 0.5) * 0.3;
-        this.speedY = (Math.random() - 0.5) * 0.3;
-        this.opacity = Math.random() * 0.3 + 0.1;
-      }
-      update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(148, 163, 184, ' + this.opacity + ')';
-        ctx.fill();
-      }
-    }
-
-    for (let i = 0; i < 50; i++) particles.push(new Particle());
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        p.update();
-        p.draw();
-      });
-      particles.forEach(p => {
-        const dx = mouseX - p.x;
-        const dy = mouseY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(mouseX, mouseY);
-          ctx.strokeStyle = 'rgba(148, 163, 184, ' + (0.15 * (1 - dist / 150)) + ')';
-          ctx.stroke();
-        }
-      });
-      requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
-
-    document.querySelectorAll('.service-card').forEach(card => {
-      card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = (y - centerY) / 20;
-        const rotateY = (centerX - x) / 20;
-        card.style.transform = 'translateY(-8px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)';
-      });
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = '';
-      });
-    });
-
-    let reviewScrollDirection = 1;
-    setInterval(() => {
-      const track = document.getElementById('reviewsTrack');
-      if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 10) reviewScrollDirection = -1;
-      if (track.scrollLeft <= 10) reviewScrollDirection = 1;
-      track.scrollBy({ left: reviewScrollDirection * 360, behavior: 'smooth' });
-    }, 5000);
   </script>
 </body>
 </html>`;
 
-  const { url } = await put(`generated-sites/${filename}`, html, {
-    access: "public",
-    contentType: "text/html",
-  });
-
-  return { url, filename };
+  // Local fallback for dev, Vercel Blob for production
+  const isVercel = !!process.env.VERCEL;
+  if (isVercel) {
+    const { url } = await put(`generated-sites/${filename}`, html, {
+      access: "public",
+      contentType: "text/html",
+    });
+    return { url, filename };
+  } else {
+    const dir = join(process.cwd(), "public", "generated-sites");
+    mkdirSync(dir, { recursive: true });
+    const filepath = join(dir, filename);
+    writeFileSync(filepath, html);
+    return { url: `/generated-sites/${filename}`, filename };
+  }
 }

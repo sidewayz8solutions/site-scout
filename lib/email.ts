@@ -1,25 +1,20 @@
 import "server-only";
-import nodemailer from "nodemailer";
+import { google } from "googleapis";
 
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = Number(process.env.SMTP_PORT || "587");
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
 const FROM_EMAIL = process.env.FROM_EMAIL || "hello@example.com";
 
-export function createTransporter() {
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    return null;
-  }
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
+async function getAccessToken() {
+  const oauth2Client = new google.auth.OAuth2(
+    GMAIL_CLIENT_ID,
+    GMAIL_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground"
+  );
+  oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+  const { token } = await oauth2Client.getAccessToken();
+  return token;
 }
 
 export async function sendEmail({
@@ -31,17 +26,41 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  const transporter = createTransporter();
-  if (!transporter) {
-    return { success: false, error: "SMTP not configured" };
+  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN) {
+    return { success: false, error: "Gmail API not configured" };
   }
+
   try {
-    await transporter.sendMail({
-      from: `"Site Scout" <${FROM_EMAIL}>`,
-      to,
-      subject,
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      return { success: false, error: "Failed to get Gmail access token" };
+    }
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+    const message = [
+      `From: "Site Scout" <${FROM_EMAIL}>`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `Content-Type: text/html; charset=utf-8`,
+      "",
       html,
+    ].join("\n");
+
+    const encodedMessage = Buffer.from(message)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    await gmail.users.messages.send({
+      userId: "me",
+      requestBody: { raw: encodedMessage },
     });
+
     return { success: true };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };

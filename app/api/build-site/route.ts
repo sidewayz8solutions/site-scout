@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { generatedSites } from "@/db/schema";
-import { generateSite } from "@/lib/site-generator";
+import { businesses, generatedSites } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { generateSite } from "@/lib/site-generator";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const business = body.business;
+  const businessId = Number(body.businessId);
 
-  if (!business || !business.id) {
-    return NextResponse.json({ error: "Missing business data" }, { status: 400 });
+  if (!businessId) {
+    return NextResponse.json({ error: "Missing businessId" }, { status: 400 });
+  }
+
+  const [business] = await db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+  if (!business) {
+    return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
   const [existing] = await db
     .select()
     .from(generatedSites)
-    .where(eq(generatedSites.businessId, business.id))
+    .where(eq(generatedSites.businessId, businessId))
     .limit(1);
 
   if (existing) {
@@ -31,13 +36,13 @@ export async function POST(req: NextRequest) {
       email: business.email || null,
       address: business.address || "",
     },
-    business.id
+    businessId
   );
 
   const [site] = await db
     .insert(generatedSites)
     .values({
-      businessId: business.id,
+      businessId,
       htmlPath: url,
       previewUrl: url,
       createdAt: Date.now(),

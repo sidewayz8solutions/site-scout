@@ -18,23 +18,18 @@ export async function POST(req: NextRequest) {
 
   const status = result.success ? "sent" : "failed";
 
-  let record;
-  try {
-    [record] = await db
-      .insert(outreach)
-      .values({
-        businessId,
-        toEmail,
-        subject,
-        body: html,
-        status,
-        sentAt: result.success ? Date.now() : undefined,
-        createdAt: Date.now(),
-      })
-      .returning();
-  } catch {
-    // ephemeral DB might fail, but email still sends
-  }
+  const [record] = await db
+    .insert(outreach)
+    .values({
+      businessId,
+      toEmail,
+      subject,
+      body: html,
+      status,
+      sentAt: result.success ? Date.now() : undefined,
+      createdAt: Date.now(),
+    })
+    .returning();
 
   return NextResponse.json({ success: result.success, record, error: result.error });
 }

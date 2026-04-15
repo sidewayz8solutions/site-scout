@@ -144,9 +144,11 @@ export function SearchPageContent() {
 
   const openEmailDialog = (business: Business) => {
     setActiveBusiness(business);
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
-    const siteUrl = generatedSites[business.id]
-      ? `${origin}${generatedSites[business.id]}`
+    const rawUrl = generatedSites[business.id] || "";
+    const siteUrl = rawUrl.startsWith("http")
+      ? rawUrl
+      : rawUrl
+      ? `${typeof window !== "undefined" ? window.location.origin : ""}${rawUrl}`
       : "";
     const services = `- Custom website design & development\n- Local SEO & Google Business setup\n- Hosting, maintenance & support\n- Logo design & branding`;
     const defaultEmail = buildDefaultEmail({
