@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Site Scout
+
+Find local businesses without websites, auto-build them a demo site, and send outreach emails offering your web services.
+
+## Features
+
+- **Business Search** — Search any industry + city combo to discover local businesses
+- **Website Detection** — Instantly identifies which businesses have websites and which don't
+- **Auto Demo Site Builder** — One-click generation of a beautiful, industry-specific one-page demo website
+- **Email Outreach** — Compose and send emails directly from the app with a pre-written template including the demo link
+- **Outreach Tracking** — SQLite database tracks all businesses, generated sites, and emails sent
+
+## Tech Stack
+
+- Next.js 15 (App Router)
+- TypeScript + Tailwind CSS
+- shadcn/ui + Sonner toasts
+- SQLite + Drizzle ORM
+- Nodemailer (SMTP email sending)
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+cd site-scout
+npm install
+npm run db:push
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3001
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## SMTP Configuration (for sending real emails)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file:
 
-## Learn More
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+FROM_EMAIL=your-email@gmail.com
+```
 
-To learn more about Next.js, take a look at the following resources:
+If SMTP is not configured, the app will save the outreach record but show "SMTP not configured".
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How It Works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Enter an industry (e.g. `roofing`) and location (e.g. `Tampa, FL`)
+2. The app generates 20 realistic mock local businesses for that query
+3. Filter by "No Website" to see prospects missing an online presence
+4. Click **Build Demo Site** to instantly generate a custom landing page
+5. Click **Send Email** to open the composer with a pre-filled template
+6. The email includes the demo site link and a service offering pitch
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+site-scout/
+├── app/
+│   ├── page.tsx                 # Landing / search input
+│   ├── search/
+│   │   ├── page.tsx             # Search results wrapper
+│   │   └── SearchPageContent.tsx # Main results UI
+│   └── api/
+│       ├── search/route.ts      # Mock business search API
+│       ├── build-site/route.ts  # Demo site generator API
+│       └── send-email/route.ts  # Email sending API
+├── components/ui/               # shadcn components
+├── db/
+│   ├── schema.ts                # Drizzle schema
+│   └── index.ts                 # DB connection
+├── lib/
+│   ├── mock-search.ts           # Mock business generator
+│   ├── site-generator.ts        # HTML site builder
+│   ├── email.ts                 # Nodemailer sender (server-only)
+│   └── email-template.ts        # Default email template
+└── public/generated-sites/      # Generated demo sites
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT
