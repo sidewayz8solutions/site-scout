@@ -53,6 +53,8 @@ export function SearchPageContent() {
   const [emailBody, setEmailBody] = React.useState("");
   const [sendingEmail, setSendingEmail] = React.useState(false);
   const [findingEmailIds, setFindingEmailIds] = React.useState<number[]>([]);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewUrl, setPreviewUrl] = React.useState("");
 
   const fetchBusinesses = async (ind: string, loc: string) => {
     setLoading(true);
@@ -333,11 +335,17 @@ export function SearchPageContent() {
                     {!b.hasWebsite && (
                       <>
                         {generatedSites[b.id] ? (
-                          <Button variant="outline" size="sm" className="gap-1.5 w-full" asChild>
-                            <a href={generatedSites[b.id]} target="_blank" rel="noreferrer">
-                              <ExternalLink className="h-4 w-4" />
-                              View Demo Site
-                            </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 w-full"
+                            onClick={() => {
+                              setPreviewUrl(generatedSites[b.id]);
+                              setPreviewOpen(true);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            View Demo Site
                           </Button>
                         ) : (
                           <Button
@@ -428,6 +436,37 @@ export function SearchPageContent() {
               {sendingEmail ? "Sending..." : "Send Email"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Demo Site Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-[95vw] w-[1100px] h-[85vh] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-sm font-medium">Demo Site Preview</DialogTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-8 gap-1" asChild>
+                <a href={previewUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open in new tab
+                </a>
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 relative">
+            {previewUrl ? (
+              <iframe
+                src={previewUrl}
+                className="absolute inset-0 w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+                title="Demo site preview"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                No preview available
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </main>
