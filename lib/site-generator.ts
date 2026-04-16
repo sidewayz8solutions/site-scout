@@ -397,6 +397,7 @@ function submitCall(){const v=document.getElementById('callInput').value;if(v){a
     const { url } = await put(`generated-sites/${filename}`, html, {
       access: "public",
       contentType: "text/html",
+      allowOverwrite: true,
     });
     return { url, filename };
   } else {

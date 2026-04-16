@@ -1,24 +1,16 @@
 import "server-only";
-import { google } from "googleapis";
 
-const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
-const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
-const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const FROM_EMAIL = process.env.FROM_EMAIL || "hello@example.com";
+const SIGNATURE = process.env.GMAIL_SIGNATURE_HTML || "";
 
-async function getAccessToken() {
-  const envToken = process.env.GMAIL_ACCESS_TOKEN;
-  if (envToken) return envToken;
-
-  const oauth2Client = new google.auth.OAuth2(
-    GMAIL_CLIENT_ID,
-    GMAIL_CLIENT_SECRET,
-    "https://developers.google.com/oauthplayground"
-  );
-  oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
-  const { token } = await oauth2Client.getAccessToken();
-  return token;
-}
+const DEFAULT_SIGNATURE = `<br><br>
+<div style="border-top:1px solid #e5e7eb;padding-top:12px;margin-top:12px;font-size:14px;color:#374151;line-height:1.5;">
+  <p style="margin:0;"><strong>Benjamin</strong><br>
+  Sidewayz 8 Solutions<br>
+  📧 <a href="mailto:benjamin@sidewayz8solutions.com" style="color:#2563eb;text-decoration:none;">benjamin@sidewayz8solutions.com</a><br>
+  🌐 <a href="https://sidewayz8solutions.com" style="color:#2563eb;text-decoration:none;">sidewayz8solutions.com</a></p>
+</div>`;
 
 export async function sendEmail({
   to,
@@ -29,40 +21,33 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN) {
-    return { success: false, error: "Gmail API not configured" };
+  if (!RESEND_API_KEY) {
+    return { success: false, error: "Resend API key not configured" };
   }
 
+  const signature = SIGNATURE || DEFAULT_SIGNATURE;
+  const fullHtml = html + "\n" + signature;
+
   try {
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      return { success: false, error: "Failed to get Gmail access token" };
-    }
-
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-    const message = [
-      `From: "Site Scout" <${FROM_EMAIL}>`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      `Content-Type: text/html; charset=utf-8`,
-      "",
-      html,
-    ].join("\n");
-
-    const encodedMessage = Buffer.from(message)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-
-    await gmail.users.messages.send({
-      userId: "me",
-      requestBody: { raw: encodedMessage },
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: `"Site Scout" <${FROM_EMAIL}>`,
+        to,
+        subject,
+        html: fullHtml,
+      }),
     });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return { success: false, error: data.message || `Resend error: ${res.status}` };
+    }
 
     return { success: true };
   } catch (err) {

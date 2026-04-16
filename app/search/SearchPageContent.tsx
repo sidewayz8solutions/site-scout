@@ -100,7 +100,7 @@ export function SearchPageContent() {
       const res = await fetch("/api/build-site", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessId: business.id }),
+        body: JSON.stringify({ businessId: business.id, business }),
       });
       const data = await res.json();
       if (data.success) {
